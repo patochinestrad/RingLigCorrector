@@ -17,8 +17,19 @@ def format_pdb_atom_line(atom_list):
 def correct(
     file: Annotated[str, typer.Argument(help="Path to PDB file of the ligand")],
     compound_name: Annotated[
-        str, typer.Argument(help="Three chracter code used to rename the ligand")
+        str, typer.Argument(
+            help="Three chracter code used to rename the ligand")
     ],
+    replace_name: Annotated[
+        str, typer.Argument(
+            help="Name of the residue to change. Defaults to UNL")
+    ] = "UNL",
+    rename_chain: Annotated[
+        str,
+        typer.Argument(
+            help="Rename the chain of the ligand or protein/ligand complex. Defaults to A"
+        ),
+    ] = "A",
     connections: Annotated[
         bool, typer.Option(help="Output connection scheme for use with ring")
     ] = False,
@@ -30,7 +41,7 @@ def correct(
     ] = False,
 ):
     """
-    A CLI tool to correct and generate needed information to analyze protein interacctions with non-standard ligands using RING
+    Rename the atoms of a small-molecule PDB file and outputs the bond order to be used with the Ring-Pymol plugin
     """
     if len(compound_name) != 3:
         print(
@@ -42,20 +53,33 @@ EXITING NOW"""
     with open(file, "r") as f, open(f"{compound_name}_correct_names.pdb", "w") as fout:
         atom_dict = {}
         keep_connections = []
+        atom_num = 1
         for line in f:
             if line.startswith(("ATOM", "HETATM")):
                 part = line.split()
-                part[2] = part[2][0] + part[1]
-                atom_dict[part[1]] = part[2]
-                part[3] = compound_name.upper()
-                fout.write(format_pdb_atom_line(part) + "\n")
+                part[-1] = "".join(x for x in part[-1] if x.isalpha())
+                part[4] = rename_chain
+                if part[3] != replace_name:
+                    fout.write(format_pdb_atom_line(part) + "\n")
+                else:
+                    part[2] = part[2][0] + str(atom_num)
+                    atom_num += 1
+                    atom_dict[part[1]] = part[2]
+                    part[3] = compound_name.upper()
+                    fout.write(format_pdb_atom_line(part) + "\n")
             elif line.startswith("CONECT"):
                 fout.write(line)
                 parts = line.split()[1:]
                 node = parts[0]
                 all_connections = parts[1:]
                 local_connections = list(
-                    set([con for con in all_connections if int(con) > int(node)])
+                    set(
+                        [
+                            con
+                            for con in all_connections
+                            if int(con) > int(node) and int(node) in atom_dict.keys()
+                        ]
+                    )
                 )
                 local_connections.insert(0, node)
                 if len(local_connections) > 1:
