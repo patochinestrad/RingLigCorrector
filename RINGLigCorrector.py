@@ -17,8 +17,7 @@ def format_pdb_atom_line(atom_list):
 def correct(
     file: Annotated[str, typer.Argument(help="Path to PDB file of the ligand")],
     compound_name: Annotated[
-        str, typer.Argument(
-            help="Three chracter code used to rename the ligand")
+        str, typer.Argument(help="Three chracter code used to rename the ligand")
     ],
     connections: Annotated[
         bool, typer.Option(help="Output connection scheme for use with ring")
@@ -31,7 +30,7 @@ def correct(
     ] = False,
 ):
     """
-    Rename the atoms of a small-molecule PDB file and outputs the bond order to be used with the Ring-Pymol plugin
+    A CLI tool to correct and generate needed information to analyze protein interacctions with non-standard ligands using RING
     """
     if len(compound_name) != 3:
         print(
