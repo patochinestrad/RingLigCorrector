@@ -1,4 +1,0 @@
-Poner opcion para el output dir
-
-Arreglar el output que tira mal los connect y los DONACC. DONACC tira los de todo el complejo, habria que seleccionar solo los del residuo mio
-Connect no tira nada ni idea

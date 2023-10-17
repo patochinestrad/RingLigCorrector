@@ -1,7 +1,10 @@
 import typer
+from pathlib import Path
+import os
 from pymol import cmd
 from rich import print
 from typing_extensions import Annotated
+from typing import Optional
 
 app = typer.Typer()
 
@@ -39,6 +42,10 @@ def correct(
             help="Output hydrogen bond donor and acceptor atoms for use with ring"
         ),
     ] = False,
+    outdir: Annotated[
+        Optional[Path],
+        typer.Option(help="Output directory. Defaults to current directory."),
+    ] = os.getcwd(),
 ):
     """
     Rename the atoms of a small-molecule PDB file and outputs the bond order to be used with the Ring-Pymol plugin
@@ -50,7 +57,14 @@ ERROR: COMPOUND NAME NEEDS TO BE EXACTLY 3 CHARACTERS BETWEEN LETTERS AND NUMBER
 EXITING NOW"""
         )
         return 1
-    with open(file, "r") as f, open(f"{compound_name}_correct_names.pdb", "w") as fout:
+    if outdir != os.getcwd():
+        try:
+            os.mkdir(os.path.join(os.getcwd(), outdir))
+        except FileExistsError:
+            print("Output directory already exists")
+    with open(file, "r") as f, open(
+        f"{os.path.join(outdir,compound_name)}_correct_names.pdb", "w"
+    ) as fout:
         atom_dict = {}
         keep_connections = []
         atom_num = 1
@@ -77,7 +91,7 @@ EXITING NOW"""
                         [
                             con
                             for con in all_connections
-                            if int(con) > int(node) and int(node) in atom_dict.keys()
+                            if int(con) > int(node) and str(node) in atom_dict.keys()
                         ]
                     )
                 )
@@ -86,20 +100,22 @@ EXITING NOW"""
                     keep_connections.append(local_connections)
 
         if connections:
-            with open(f"{compound_name}_connections_for_ring.txt", "w") as ringout:
+            with open(
+                f"{os.path.join(outdir,compound_name)}_connections_for_ring.txt", "w"
+            ) as ringout:
                 ringout.write(compound_name + "\n")
                 for connects in keep_connections:
                     correct_naming = [atom_dict[value] for value in connects]
                     ringout.write(" ".join(correct_naming) + "\n")
 
     if acc_dons:
-        cmd.load(f"{compound_name}_correct_names.pdb")
+        cmd.load(f"{os.path.join(outdir,compound_name)}_correct_names.pdb")
         atoms = {"acceptors": [], "donors": []}
-        cmd.select("acc.")
+        cmd.select(f"(resn {compound_name} and acc.)")
         cmd.iterate("(sele)", "acceptors.append(name)", space=atoms)
-        cmd.select("don.")
+        cmd.select(f"(resn {compound_name} and don.)")
         cmd.iterate("(sele)", "donors.append(name)", space=atoms)
-        with open(f"{compound_name}_acc_and_dons.txt", "w") as f:
+        with open(f"{os.path.join(outdir,compound_name)}_acc_and_dons.txt", "w") as f:
             f.write(f"# {compound_name}\n")
             f.write("A:" + " ".join(atoms["acceptors"]) + "\n")
             f.write("D:" + " ".join(atoms["donors"]))
